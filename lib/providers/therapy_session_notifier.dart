@@ -27,6 +27,7 @@ class TherapySessionNotifier
       therapistAgent: session.therapistAgent,
       createdAt: session.createdAt,
       transcript: [...session.transcript, newLine],
+      moodEntries: session.moodEntries,
     );
     state = AsyncValue.data(updated);
     await updateTranscript(sessionId, updated.transcript);

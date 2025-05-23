@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
         '/journal': (_) => const NavigationShell(initialIndex: 2),
         '/profile': (context) => ProfilePage(),
       },
-      title: 'No Couch Needed',
+      title: 'No Couch Required',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: AuthGate(),
     );

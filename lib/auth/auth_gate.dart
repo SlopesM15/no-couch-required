@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:no_couch_needed/pages/auth_page.dart';
 import 'package:no_couch_needed/pages/home_page.dart';
 import 'package:no_couch_needed/pages/profile_page.dart';
@@ -21,7 +22,14 @@ class AuthGate extends ConsumerWidget {
 
           // Check if the profile is loaded
           if (profileAsync.isLoading) {
-            return Scaffold(body: Center(child: CircularProgressIndicator()));
+            return Scaffold(
+              body: Center(
+                child: LoadingAnimationWidget.newtonCradle(
+                  color: Colors.black,
+                  size: 50,
+                ),
+              ),
+            );
           }
 
           return profileAsync.when(
@@ -44,8 +52,14 @@ class AuthGate extends ConsumerWidget {
               }
             },
             loading:
-                () =>
-                    Scaffold(body: Center(child: CircularProgressIndicator())),
+                () => Scaffold(
+                  body: Center(
+                    child: LoadingAnimationWidget.newtonCradle(
+                      color: Colors.black,
+                      size: 50,
+                    ),
+                  ),
+                ),
             error:
                 (e, _) => Scaffold(
                   body: Center(child: Text('Error loading profile: $e')),
@@ -55,7 +69,15 @@ class AuthGate extends ConsumerWidget {
           return AuthPage();
         }
       },
-      loading: () => Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading:
+          () => Scaffold(
+            body: Center(
+              child: LoadingAnimationWidget.newtonCradle(
+                color: Colors.cyanAccent,
+                size: 50,
+              ),
+            ),
+          ),
       error:
           (_, __) => Scaffold(body: Center(child: Text('Error loading Auth'))),
     );

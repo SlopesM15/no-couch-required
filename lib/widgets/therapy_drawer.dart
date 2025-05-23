@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class TherapyDrawer extends StatelessWidget {
   final Function onLogout;
 
-  TherapyDrawer({required this.onLogout});
+  const TherapyDrawer({super.key, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -12,15 +12,19 @@ class TherapyDrawer extends StatelessWidget {
     final user = Supabase.instance.client.auth.currentUser;
 
     return ClipRRect(
-      borderRadius: BorderRadius.only(
+      borderRadius: const BorderRadius.only(
         topRight: Radius.circular(30),
         bottomRight: Radius.circular(30),
       ),
       child: Drawer(
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFE3F2FD), Color(0xFFF8F9FA)],
+              colors: [
+                Color(0xFF414345),
+                Color(0xFF232526),
+                Color.fromARGB(255, 0, 0, 0),
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -31,129 +35,214 @@ class TherapyDrawer extends StatelessWidget {
               DrawerHeader(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                    colors: [Colors.grey[800]!, Colors.grey[900]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                  ),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.cyanAccent.withOpacity(0.3),
+                      width: 1,
+                    ),
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      child: AnimatedRotation(
-                        duration: Duration(milliseconds: 800),
-                        turns: 1,
-                        child: Icon(
-                          Icons.self_improvement,
-                          color: Color(0xFF1976D2),
-                          size: 32,
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Colors.cyanAccent, Colors.cyan],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.cyanAccent.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/ncnlogo.png',
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Text(
                       user?.email ?? 'Welcome!',
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      'Therapy App',
-                      style: TextStyle(color: Colors.white70, fontSize: 15),
+                      'No Couch Required',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 14),
                     ),
                   ],
                 ),
               ),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Text(
-                  'Navigation',
+                  'NAVIGATION',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade900,
-                    fontSize: 14,
-                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home, color: Color(0xFF1976D2)),
-                title: Text('Home', style: TextStyle(fontSize: 18)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hoverColor: Colors.blue[50],
+              _DrawerTile(
+                icon: Icons.home_rounded,
+                title: 'Home',
+                color: Colors.cyanAccent,
                 onTap: () {
                   Navigator.pushReplacementNamed(context, '/home');
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.person, color: Color(0xFF1976D2)),
-                title: Text('Profile', style: TextStyle(fontSize: 18)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hoverColor: Colors.blue[50],
+              _DrawerTile(
+                icon: Icons.person_rounded,
+                title: 'Profile',
+                color: Colors.pinkAccent,
                 onTap: () {
                   Navigator.pushReplacementNamed(context, '/profile');
                 },
               ),
-
-              Divider(thickness: 1, endIndent: 25, indent: 25),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                child: Divider(thickness: 1, color: Colors.grey[800]),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Text(
-                  'Session',
+                  'SESSION',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueGrey,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.event_note, color: Colors.teal),
-                title: Text("My Sessions", style: TextStyle(fontSize: 18)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hoverColor: Colors.teal[50],
+              _DrawerTile(
+                icon: Icons.event_note_rounded,
+                title: 'My Sessions',
+                color: Colors.greenAccent,
                 onTap: () {
                   Navigator.pushReplacementNamed(context, '/sessions');
                 },
               ),
-              ListTile(
-                leading: Icon(Icons.logout, color: Colors.redAccent),
-                title: Text(
-                  'Logout',
-                  style: TextStyle(fontSize: 18, color: Colors.redAccent),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                hoverColor: Colors.red[100],
+              _DrawerTile(
+                icon: Icons.book_rounded,
+                title: 'Journal',
+                color: Colors.purpleAccent,
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/journal');
+                },
+              ),
+              const SizedBox(height: 24),
+              _DrawerTile(
+                icon: Icons.logout_rounded,
+                title: 'Logout',
+                color: Colors.redAccent,
+                isDestructive: true,
                 onTap: () async {
                   await Supabase.instance.client.auth.signOut();
+
                   onLogout();
                 },
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 32),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  "Take care of your mind. 🌱",
+                  "Take care of your mind 🌱",
                   style: TextStyle(
-                    color: Colors.blueGrey,
+                    color: Colors.grey[600],
                     fontStyle: FontStyle.italic,
+                    fontSize: 13,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _DrawerTile({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.grey[900]?.withOpacity(0.3),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDestructive ? color : Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
