@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:no_couch_needed/models/mood_entry.dart';
@@ -82,6 +84,9 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
   // Add loading state for mood detection
   bool isMoodDetecting = false;
 
+  // Add timer for auto-stop speaking animation
+  Timer? _speakingTimer;
+
   @override
   void initState() {
     super.initState();
@@ -93,15 +98,7 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
           isLoading = false;
           isCallStarted = true;
           sessionStartTime = DateTime.now();
-          isSpeaking = true;
-          activeSpeaker = "assistant";
-        });
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted)
-            setState(() {
-              isSpeaking = false;
-              activeSpeaker = null;
-            });
+          // Don't immediately set speaking to true on call start
         });
       }
       if (event.label == "call-end") {
@@ -112,6 +109,7 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
           isSpeaking = false;
           activeSpeaker = null;
         });
+        _speakingTimer?.cancel();
       }
       if (event.label == "message") {
         var data = event.value;
@@ -125,33 +123,78 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
           }
         }
 
-        if (data is Map &&
-            data["type"] == "transcript" &&
-            data["transcriptType"] == "final" &&
-            (data["transcript"] as String?)?.isNotEmpty == true) {
-          final transcriptText = data["transcript"]!;
-          final speakerRole = data["role"] == "user" ? "user" : "assistant";
+        if (data is Map && data["type"] == "transcript") {
+          final transcriptType = data["transcriptType"];
+          final transcript = data["transcript"] as String?;
+          final role = data["role"] == "user" ? "user" : "assistant";
 
-          setState(() {
-            isSpeaking = true;
-            activeSpeaker = speakerRole;
-            transcriptLines.add(
-              _TranscriptLine(transcriptText, speakerRole, DateTime.now()),
-            );
-          });
-
-          // Auto-detect mood for user messages
-          if (speakerRole == "user") {
-            _detectAndAddMood(transcriptText);
-          }
-
-          Future.delayed(const Duration(milliseconds: 1600), () {
-            if (mounted)
+          if (transcript?.isNotEmpty == true) {
+            // Handle both partial and final transcripts
+            if (transcriptType == "partial") {
+              // For partial transcripts, update speaking state
               setState(() {
-                isSpeaking = false;
-                activeSpeaker = null;
+                isSpeaking = true;
+                activeSpeaker = role;
               });
-          });
+
+              // Cancel any existing timer
+              _speakingTimer?.cancel();
+
+              // Set a timer to stop speaking animation if no new partials come
+              _speakingTimer = Timer(const Duration(milliseconds: 4000), () {
+                if (mounted) {
+                  setState(() {
+                    isSpeaking = false;
+                    // Keep the last speaker visible for a bit longer
+                    Future.delayed(const Duration(milliseconds: 1000), () {
+                      if (mounted && !isSpeaking) {
+                        setState(() {
+                          activeSpeaker = null;
+                        });
+                      }
+                    });
+                  });
+                }
+              });
+            } else if (transcriptType == "final") {
+              // Cancel the timer since we got the final transcript
+              _speakingTimer?.cancel();
+
+              setState(() {
+                // Keep speaking state for a brief moment
+                isSpeaking = true;
+                activeSpeaker = role;
+
+                // Add the final transcript to the list
+                transcriptLines.add(
+                  _TranscriptLine(transcript!, role, DateTime.now()),
+                );
+              });
+
+              // Auto-detect mood for user messages
+              if (role == "user") {
+                _detectAndAddMood(transcript!);
+              }
+
+              // Gradually fade out the speaking animation
+              Future.delayed(const Duration(milliseconds: 400), () {
+                if (mounted) {
+                  setState(() {
+                    isSpeaking = false;
+                  });
+
+                  // Clear active speaker a bit later
+                  Future.delayed(const Duration(milliseconds: 300), () {
+                    if (mounted && !isSpeaking) {
+                      setState(() {
+                        activeSpeaker = null;
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          }
         }
       }
     });
@@ -189,28 +232,223 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
   }
 
   Future<void> _handleEndSession() async {
+    _speakingTimer?.cancel();
+
     if (isCallStarted) {
       await vapi.stop();
     }
 
     final shouldSave = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder:
-          (_) => AlertDialog(
-            title: Text('Save Session?'),
-            content: Text(
-              'Do you want to save this session and its transcript to your history?',
+          (BuildContext context) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF414345), Color(0xFF232526)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: widget.therapistColor.withOpacity(0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.therapistColor.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: widget.therapistColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: widget.therapistColor.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.save_outlined,
+                      color: widget.therapistColor,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Title
+                  Text(
+                    'Save Session?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Content
+                  Text(
+                    'Do you want to save this session and its transcript to your history?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Session info
+                  if (transcriptLines.isNotEmpty) ...[
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Column(
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                color: widget.therapistColor,
+                                size: 20,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${transcriptLines.length}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'Messages',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            width: 1,
+                            height: 40,
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                          Column(
+                            children: [
+                              Icon(
+                                Icons.psychology_outlined,
+                                color: widget.therapistColor,
+                                size: 20,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${widget.session.moodEntries.length}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                'Moods',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: Colors.white.withOpacity(0.2),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            'Discard',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: widget.therapistColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.save, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Save',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            actions: [
-              TextButton(
-                child: Text('Discard'),
-                onPressed: () => Navigator.pop(context, false),
-              ),
-              TextButton(
-                child: Text('Save'),
-                onPressed: () => Navigator.pop(context, true),
-              ),
-            ],
           ),
     );
 
@@ -253,6 +491,7 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
 
   @override
   void dispose() {
+    _speakingTimer?.cancel();
     _textController.dispose();
     super.dispose();
   }
