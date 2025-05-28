@@ -158,6 +158,15 @@ class TherapyDrawer extends StatelessWidget {
                   Navigator.pushReplacementNamed(context, '/journal');
                 },
               ),
+
+              _DrawerTile(
+                icon: Icons.library_books_rounded,
+                title: 'Resources',
+                color: Colors.orangeAccent,
+                onTap: () {
+                  Navigator.pushReplacementNamed(context, '/resources');
+                },
+              ),
               const SizedBox(height: 24),
               _DrawerTile(
                 icon: Icons.logout_rounded,

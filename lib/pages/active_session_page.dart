@@ -507,9 +507,11 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
           title: Text(
             'Session with ${widget.session.therapistAgent}',
             style: TextStyle(color: Colors.white),
+
             textScaleFactor: 0.8,
           ),
           backgroundColor: const Color(0xFF414345),
+          iconTheme: IconThemeData(color: Colors.white),
           actions: [
             if (isMoodDetecting)
               Padding(
@@ -656,20 +658,76 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
                                         });
                                       },
                               style: ElevatedButton.styleFrom(
+                                backgroundColor: widget.therapistColor,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: widget.therapistColor
+                                    .withOpacity(0.5),
+                                disabledForegroundColor: Colors.white70,
                                 minimumSize: Size(0, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
                               ),
-                              child: Text(buttonText),
+                              child:
+                                  isLoading
+                                      ? Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            buttonText,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                      : Text(
+                                        buttonText,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton.icon(
-                              icon: Icon(Icons.stop, color: Colors.red),
-                              label: Text('End Session'),
+                              icon: Icon(Icons.stop, color: Colors.white),
+                              label: Text(
+                                'End Session',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.red,
+                                backgroundColor: Colors.red.withOpacity(0.8),
+                                foregroundColor: Colors.white,
                                 minimumSize: Size(0, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                                shadowColor: Colors.transparent,
                               ),
                               onPressed: _handleEndSession,
                             ),

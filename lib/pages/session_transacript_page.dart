@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:no_couch_needed/models/therapy_sessions.dart';
 import 'package:no_couch_needed/models/transcript_line.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:no_couch_needed/service/session_export_service.dart';
 
 class SessionTranscriptPage extends StatefulWidget {
   final TherapySession session;
@@ -55,10 +56,21 @@ class _SessionTranscriptPageState extends State<SessionTranscriptPage> {
                   : Icons.show_chart_rounded,
               color: Colors.white,
             ),
+            tooltip: showMoodGraph ? 'Show Transcript' : 'Show Mood Graph',
             onPressed: () {
               setState(() {
                 showMoodGraph = !showMoodGraph;
               });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
+            tooltip: 'Export as PDF',
+            onPressed: () async {
+              await SessionExportService.exportSessionAsPDF(
+                session: widget.session,
+                context: context,
+              );
             },
           ),
         ],
@@ -189,10 +201,12 @@ class _SessionTranscriptPageState extends State<SessionTranscriptPage> {
                   child:
                       showMoodGraph
                           ? _MoodGraph(
+                            key: const ValueKey('mood_graph'),
                             session: widget.session,
                             therapistColor: therapistColor,
                           )
                           : _TranscriptView(
+                            key: const ValueKey('transcript_view'),
                             session: widget.session,
                             therapistColor: therapistColor,
                           ),
@@ -240,7 +254,11 @@ class _MoodGraph extends StatelessWidget {
   final TherapySession session;
   final Color therapistColor;
 
-  const _MoodGraph({required this.session, required this.therapistColor});
+  const _MoodGraph({
+    super.key,
+    required this.session,
+    required this.therapistColor,
+  });
 
   // Convert mood to numeric value for graphing
   double _moodToValue(String mood) {
@@ -540,7 +558,11 @@ class _TranscriptView extends StatelessWidget {
   final TherapySession session;
   final Color therapistColor;
 
-  const _TranscriptView({required this.session, required this.therapistColor});
+  const _TranscriptView({
+    super.key,
+    required this.session,
+    required this.therapistColor,
+  });
 
   @override
   Widget build(BuildContext context) {

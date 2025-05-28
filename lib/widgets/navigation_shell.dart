@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:no_couch_needed/pages/home_page.dart';
 import 'package:no_couch_needed/pages/journal_page.dart';
-import 'package:no_couch_needed/pages/profile_page.dart';
+import 'package:no_couch_needed/pages/resource_page.dart';
 import 'package:no_couch_needed/pages/sessions_page.dart';
 import 'package:no_couch_needed/widgets/therapy_drawer.dart';
 
@@ -17,7 +17,12 @@ class NavigationShell extends StatefulWidget {
 class _NavigationShellState extends State<NavigationShell> {
   late int _selectedIndex;
 
-  final List<Widget> _pages = [HomePage(), SessionsPage(), JournalPage()];
+  final List<Widget> _pages = [
+    HomePage(),
+    SessionsPage(),
+    JournalPage(),
+    ResourcesPage(),
+  ];
 
   @override
   void initState() {
@@ -96,6 +101,14 @@ class _NavigationShellState extends State<NavigationShell> {
                   selectedColor: Colors.purpleAccent,
                 ),
                 label: 'Journal',
+              ),
+              BottomNavigationBarItem(
+                icon: _NavIcon(
+                  icon: Icons.person_rounded,
+                  isSelected: _selectedIndex == 3,
+                  selectedColor: Colors.orangeAccent,
+                ),
+                label: 'Resources',
               ),
             ],
           ),

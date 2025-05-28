@@ -300,30 +300,6 @@ class _HomePageState extends State<HomePage> {
                                     ],
                                   ),
                                 ),
-                                trailing: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[800],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                                onTap: () {
-                                  // You can change this to open a transcript or anything else
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => TherapistSelectionPage(
-                                            session: session,
-                                          ),
-                                    ),
-                                  ).then((_) => _loadSessions());
-                                },
                               ),
                             );
                           },

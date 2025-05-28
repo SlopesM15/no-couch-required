@@ -12,6 +12,8 @@ import 'package:no_couch_needed/pages/journal_detail_page.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+enum JournalMode { voice, written }
+
 // Updated Journal Page
 class JournalPage extends ConsumerStatefulWidget {
   @override
@@ -19,20 +21,29 @@ class JournalPage extends ConsumerStatefulWidget {
 }
 
 class _JournalPageState extends ConsumerState<JournalPage> {
+  // Voice recording related variables
   String buttonText = 'Start Recording';
   bool isLoading = false;
   bool isRecording = false;
   bool isSpeaking = false;
   DateTime? recordingStartTime;
   Vapi vapi = Vapi('30f8e0b4-a6d4-4091-b584-503f1a9bc55a');
-
   final List<TranscriptLine> currentTranscript = [];
+
+  // Written journal related variables
+  final TextEditingController _writtenController = TextEditingController();
+  final FocusNode _writtenFocusNode = FocusNode();
+  DateTime? writingStartTime;
+
+  // Common variables
+  JournalMode currentMode = JournalMode.voice;
   bool isSavingEntry = false;
 
   @override
   void initState() {
     super.initState();
 
+    // Voice recording event listeners
     vapi.onEvent.listen((event) {
       print("Event: ${event.label} - ${event.value}");
       if (event.label == "call-start") {
@@ -94,6 +105,24 @@ class _JournalPageState extends ConsumerState<JournalPage> {
         }
       }
     });
+
+    // Listen to text changes for written journal
+    _writtenController.addListener(() {
+      setState(() {
+        if (_writtenController.text.isNotEmpty && writingStartTime == null) {
+          writingStartTime = DateTime.now();
+        } else if (_writtenController.text.isEmpty) {
+          writingStartTime = null;
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _writtenController.dispose();
+    _writtenFocusNode.dispose();
+    super.dispose();
   }
 
   Future<Map<String, String>> analyzeJournalEntry(String fullTranscript) async {
@@ -156,32 +185,41 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
   }
 
   Future<void> _handleSaveEntry() async {
-    if (currentTranscript.isEmpty) return;
+    String fullTranscript;
+    DateTime? startTime;
+    List<TranscriptLine> transcript;
+
+    if (currentMode == JournalMode.voice) {
+      if (currentTranscript.isEmpty) return;
+      fullTranscript = currentTranscript.map((line) => line.text).join(' ');
+      startTime = recordingStartTime;
+      transcript = currentTranscript;
+    } else {
+      if (_writtenController.text.trim().isEmpty) return;
+      fullTranscript = _writtenController.text.trim();
+      startTime = writingStartTime;
+      transcript = [TranscriptLine(fullTranscript, "user", DateTime.now())];
+    }
 
     setState(() {
       isSavingEntry = true;
     });
 
     try {
-      // Get full transcript text
-      final fullTranscript = currentTranscript
-          .map((line) => line.text)
-          .join(' ');
-
       // Analyze the journal entry
       final analysis = await analyzeJournalEntry(fullTranscript);
 
       // Calculate duration
       final duration =
-          recordingStartTime != null
-              ? DateTime.now().difference(recordingStartTime!).inSeconds
+          startTime != null
+              ? DateTime.now().difference(startTime).inSeconds
               : 0;
 
       // Create journal entry
       final entry = JournalEntry(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: Supabase.instance.client.auth.currentUser!.id,
-        transcript: currentTranscript,
+        transcript: transcript,
         summary: analysis['summary'],
         overallMood: analysis['mood'],
         moodColor: analysis['color'],
@@ -194,9 +232,14 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
           .from('journal_entries')
           .insert(entry.toMap());
 
-      // Clear current transcript
+      // Clear current content
       setState(() {
-        currentTranscript.clear();
+        if (currentMode == JournalMode.voice) {
+          currentTranscript.clear();
+        } else {
+          _writtenController.clear();
+          writingStartTime = null;
+        }
         isSavingEntry = false;
       });
 
@@ -226,6 +269,30 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
         );
       }
     }
+  }
+
+  void _clearCurrentEntry() {
+    setState(() {
+      if (currentMode == JournalMode.voice) {
+        currentTranscript.clear();
+      } else {
+        _writtenController.clear();
+        writingStartTime = null;
+      }
+    });
+  }
+
+  bool _hasContent() {
+    bool hasContent;
+    if (currentMode == JournalMode.voice) {
+      hasContent = currentTranscript.isNotEmpty;
+    } else {
+      hasContent = _writtenController.text.trim().isNotEmpty;
+    }
+    print(
+      "_hasContent() called - Mode: $currentMode, Has content: $hasContent, Text: '${_writtenController.text}'",
+    );
+    return hasContent;
   }
 
   @override
@@ -259,90 +326,175 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
         child: SafeArea(
           child: Column(
             children: [
-              // Recording Interface
-              if (!isRecording && currentTranscript.isEmpty) ...[
-                // Show previous entries
-                Expanded(
-                  child: journalEntriesAsync.when(
-                    data: (entries) {
-                      if (entries.isEmpty) {
-                        return Center(
-                          child: Column(
+              // Mode Toggle
+              Container(
+                margin: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey[800]?.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[700]!, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          if (!isRecording && !isSavingEntry) {
+                            setState(() {
+                              currentMode = JournalMode.voice;
+                              // Clear written content when switching to voice
+                              _writtenController.clear();
+                              writingStartTime = null;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color:
+                                currentMode == JournalMode.voice
+                                    ? Colors.purpleAccent
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.grey[900]?.withOpacity(0.5),
-                                ),
-                                child: Icon(
-                                  Icons.mic_none_rounded,
-                                  size: 48,
-                                  color: Colors.grey[600],
-                                ),
+                              Icon(
+                                Icons.mic,
+                                color:
+                                    currentMode == JournalMode.voice
+                                        ? Colors.white
+                                        : Colors.grey[400],
+                                size: 20,
                               ),
-                              const SizedBox(height: 24),
+                              const SizedBox(width: 8),
                               Text(
-                                'No journal entries yet',
+                                'Voice',
                                 style: TextStyle(
-                                  fontSize: 20,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color:
+                                      currentMode == JournalMode.voice
+                                          ? Colors.white
+                                          : Colors.grey[400],
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          print("Tapping written mode toggle");
+                          if (!isRecording && !isSavingEntry) {
+                            print("Switching to written mode");
+                            setState(() {
+                              currentMode = JournalMode.written;
+                              // Clear voice content when switching to written
+                              currentTranscript.clear();
+                              recordingStartTime = null;
+                            });
+                            print("Current mode is now: $currentMode");
+                          } else {
+                            print(
+                              "Cannot switch - isRecording: $isRecording, isSavingEntry: $isSavingEntry",
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color:
+                                currentMode == JournalMode.written
+                                    ? Colors.purpleAccent
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.edit,
+                                color:
+                                    currentMode == JournalMode.written
+                                        ? Colors.white
+                                        : Colors.grey[400],
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
                               Text(
-                                'Start recording your thoughts',
+                                'Written',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  color: Colors.grey[500],
+                                  color:
+                                      currentMode == JournalMode.written
+                                          ? Colors.white
+                                          : Colors.grey[400],
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
-                        );
-                      }
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: entries.length,
-                        itemBuilder: (context, index) {
-                          final entry = entries[index];
-                          return _JournalEntryCard(entry: entry);
-                        },
-                      );
-                    },
-                    loading:
-                        () => Center(
-                          child: LoadingAnimationWidget.newtonCradle(
-                            color: Colors.purpleAccent,
-                            size: 50,
-                          ),
+              // Content Area
+              if (currentMode == JournalMode.written && !isRecording) ...[
+                // Written journal interface
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.grey[800]!.withOpacity(0.3),
+                          Colors.grey[900]!.withOpacity(0.3),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey[700]!, width: 1),
+                    ),
+                    child: TextField(
+                      controller: _writtenController,
+                      focusNode: _writtenFocusNode,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.5,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Start writing your thoughts...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 18,
                         ),
-                    error:
-                        (err, stack) => Center(
-                          child: Text(
-                            'Error loading entries: $err',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(20),
+                      ),
+                    ),
                   ),
                 ),
-              ] else ...[
-                // Show recording interface
+              ] else if (currentMode == JournalMode.voice &&
+                  (isRecording || _hasContent())) ...[
+                // Voice recording interface
                 AiAgentWidget(
                   isSpeaking: isSpeaking,
                   activeSpeaker: isRecording ? "user" : null,
                   therapistColor: Colors.purpleAccent,
                   userColor: Colors.purpleAccent,
                 ),
-
                 const SizedBox(height: 24),
-
-                // Transcript
+                // Voice transcript
                 Expanded(
                   child: ShaderMask(
                     shaderCallback: (Rect bounds) {
@@ -381,6 +533,81 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
                     ),
                   ),
                 ),
+              ] else ...[
+                // Show previous entries when no active content
+                Expanded(
+                  child: journalEntriesAsync.when(
+                    data: (entries) {
+                      if (entries.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey[900]?.withOpacity(0.5),
+                                ),
+                                child: Icon(
+                                  currentMode == JournalMode.voice
+                                      ? Icons.mic_none_rounded
+                                      : Icons.edit_note_rounded,
+                                  size: 48,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                'No journal entries yet',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                currentMode == JournalMode.voice
+                                    ? 'Start recording your thoughts'
+                                    : 'Start writing your thoughts',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey[500],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16.0),
+                        itemCount: entries.length,
+                        itemBuilder: (context, index) {
+                          final entry = entries[index];
+                          return _JournalEntryCard(entry: entry);
+                        },
+                      );
+                    },
+                    loading:
+                        () => Center(
+                          child: LoadingAnimationWidget.newtonCradle(
+                            color: Colors.purpleAccent,
+                            size: 50,
+                          ),
+                        ),
+                    error:
+                        (err, stack) => Center(
+                          child: Text(
+                            'Error loading entries: $err',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                  ),
+                ),
               ],
 
               // Bottom controls
@@ -388,7 +615,7 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    if (currentTranscript.isNotEmpty && !isRecording) ...[
+                    if (_hasContent() && !isRecording) ...[
                       Row(
                         children: [
                           Expanded(
@@ -421,11 +648,7 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  currentTranscript.clear();
-                                });
-                              },
+                              onPressed: _clearCurrentEntry,
                               icon: Icon(Icons.delete_outline),
                               label: Text('Discard'),
                               style: ElevatedButton.styleFrom(
@@ -439,44 +662,49 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
                       const SizedBox(height: 12),
                     ],
 
-                    ElevatedButton(
-                      onPressed:
-                          isLoading
-                              ? null
-                              : () async {
-                                setState(() {
-                                  buttonText = 'Loading...';
-                                  isLoading = true;
-                                });
+                    // Main action button (only for voice mode)
+                    if (currentMode == JournalMode.voice)
+                      ElevatedButton(
+                        onPressed:
+                            isLoading
+                                ? null
+                                : () async {
+                                  setState(() {
+                                    buttonText = 'Loading...';
+                                    isLoading = true;
+                                  });
 
-                                if (!isRecording) {
-                                  recordingStartTime = DateTime.now();
-                                  await vapi.start(
-                                    assistantId:
-                                        '4277ca08-7d1c-4764-ae7b-ed72c0fc943a',
-                                  );
-                                } else {
-                                  await vapi.stop();
-                                }
+                                  if (!isRecording) {
+                                    recordingStartTime = DateTime.now();
+                                    await vapi.start(
+                                      assistantId:
+                                          '4277ca08-7d1c-4764-ae7b-ed72c0fc943a',
+                                    );
+                                  } else {
+                                    await vapi.stop();
+                                  }
 
-                                setState(() {
-                                  isLoading = false;
-                                });
-                              },
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(double.infinity, 56),
-                        backgroundColor:
-                            isRecording ? Colors.red : Colors.purpleAccent,
+                                  setState(() {
+                                    isLoading = false;
+                                  });
+                                },
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: Size(double.infinity, 56),
+                          backgroundColor:
+                              isRecording ? Colors.red : Colors.purpleAccent,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isRecording ? Icons.stop : Icons.mic,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(buttonText, style: TextStyle(fontSize: 16)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(isRecording ? Icons.stop : Icons.mic, size: 24),
-                          const SizedBox(width: 8),
-                          Text(buttonText, style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -488,7 +716,7 @@ Use colors: green, blue, red, cyan, orange, purple, yellow, pink, gray""",
   }
 }
 
-// Journal Entry Card Widget
+// Journal Entry Card Widget (unchanged)
 class _JournalEntryCard extends StatelessWidget {
   final JournalEntry entry;
 
@@ -546,7 +774,6 @@ class _JournalEntryCard extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: () {
-              // Navigate to journal detail page
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -573,7 +800,9 @@ class _JournalEntryCard extends StatelessWidget {
                           ),
                         ),
                         child: Icon(
-                          Icons.book_rounded,
+                          entry.transcript.length > 1
+                              ? Icons.mic_rounded
+                              : Icons.edit_rounded,
                           color: moodColor,
                           size: 24,
                         ),
@@ -667,13 +896,17 @@ class _JournalEntryCard extends StatelessWidget {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
-                                        Icons.timer_outlined,
+                                        entry.transcript.length > 1
+                                            ? Icons.mic_outlined
+                                            : Icons.edit_outlined,
                                         size: 12,
                                         color: Colors.grey[400],
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        '${(entry.duration / 60).round()}m',
+                                        entry.transcript.length > 1
+                                            ? '${(entry.duration / 60).round()}m'
+                                            : 'Written',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey[400],

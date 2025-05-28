@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:no_couch_needed/pages/session_transacript_page.dart';
 import 'package:no_couch_needed/providers/sessions_provider.dart';
+import 'package:no_couch_needed/service/session_export_service.dart';
 
 class SessionsPage extends ConsumerWidget {
   @override
@@ -151,6 +152,9 @@ class SessionsPage extends ConsumerWidget {
                               ),
                             );
                           },
+                          onLongPress: () {
+                            _showSessionOptions(context, session);
+                          },
                           child: Padding(
                             padding: const EdgeInsets.all(10.0),
                             child: Row(
@@ -212,7 +216,7 @@ class SessionsPage extends ConsumerWidget {
                                             size: 14,
                                             color: Colors.grey[500],
                                           ),
-
+                                          const SizedBox(width: 4),
                                           Text(
                                             sessionTime,
                                             style: TextStyle(
@@ -360,6 +364,74 @@ class SessionsPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showSessionOptions(BuildContext context, dynamic session) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.visibility_rounded,
+                    color: Colors.cyanAccent,
+                  ),
+                  title: Text(
+                    'View Transcript',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SessionTranscriptPage(session: session),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.share_rounded, color: Colors.greenAccent),
+                  title: Text(
+                    'Export as PDF',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await SessionExportService.exportSessionAsPDF(
+                      session: session,
+                      context: context,
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
