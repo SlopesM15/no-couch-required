@@ -74,7 +74,7 @@ class TherapyDrawer extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      user?.email ?? 'Welcome!',
+                      'Welcome!',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
