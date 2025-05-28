@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:no_couch_needed/config/api_config.dart';
 
 Future<Map<String, String>> getMoodAndColour(String transcription) async {
-  final apiKey =
-      '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';
-
+  final apiKey = ApiConfig.openAiApiKey;
   final response = await http.post(
     Uri.parse('https://api.openai.com/v1/chat/completions'),
     headers: {

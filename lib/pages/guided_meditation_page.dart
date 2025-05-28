@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:no_couch_needed/config/api_config.dart';
 import 'package:no_couch_needed/widgets/ai_agent_widget.dart';
 import 'package:vapinew/vapinew.dart';
 import 'dart:convert';
@@ -23,7 +24,7 @@ class _GuidedMeditationPageState extends ConsumerState<GuidedMeditationPage> {
   Timer? _durationTimer;
 
   // Vapi instance
-  Vapi vapi = Vapi('30f8e0b4-a6d4-4091-b584-503f1a9bc55a');
+  Vapi vapi = Vapi(ApiConfig.vapiApiKey);
 
   // Meditation assistant ID - you'll need to replace this with your actual assistant ID
   final String meditationAssistantId = 'df9b3484-bc9c-415b-b61a-f16cea8b31db';

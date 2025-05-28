@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:no_couch_needed/config/api_config.dart';
 import 'package:no_couch_needed/models/mood_entry.dart';
 import 'dart:math';
 import 'package:no_couch_needed/models/therapy_sessions.dart';
@@ -15,9 +16,7 @@ import 'package:http/http.dart' as http;
 
 // Add the mood detection function
 Future<Map<String, String>> getMoodAndColour(String transcription) async {
-  final apiKey =
-      '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';
-
+  final apiKey = ApiConfig.openAiApiKey;
   try {
     final response = await http.post(
       Uri.parse('https://api.openai.com/v1/chat/completions'),
@@ -76,7 +75,7 @@ class _ActiveSessionPageState extends ConsumerState<ActiveSessionPage> {
   bool isSpeaking = false;
   String? activeSpeaker;
   DateTime? sessionStartTime;
-  Vapi vapi = Vapi('30f8e0b4-a6d4-4091-b584-503f1a9bc55a');
+  Vapi vapi = Vapi(ApiConfig.vapiApiKey);
 
   final List<_TranscriptLine> transcriptLines = [];
   final TextEditingController _textController = TextEditingController();

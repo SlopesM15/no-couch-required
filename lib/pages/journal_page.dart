@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:no_couch_needed/config/api_config.dart';
 import 'package:vapinew/vapinew.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,7 @@ class _JournalPageState extends ConsumerState<JournalPage> {
   bool isRecording = false;
   bool isSpeaking = false;
   DateTime? recordingStartTime;
-  Vapi vapi = Vapi('30f8e0b4-a6d4-4091-b584-503f1a9bc55a');
+  Vapi vapi = Vapi(ApiConfig.vapiApiKey);
   final List<TranscriptLine> currentTranscript = [];
 
   // Written journal related variables

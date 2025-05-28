@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 import 'package:no_couch_needed/auth/auth_gate.dart';
 import 'package:no_couch_needed/pages/breathing_exercises_page.dart';
@@ -16,9 +17,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://qyzgjjgzxjutkwoiuiga.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5emdqamd6eGp1dGt3b2l1aWdhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0OTY3MDgsImV4cCI6MjA2MzA3MjcwOH0.kEfqfOrUuM-9m4GCCn9NWf68X0WiW-Sa70j6Bs6wn1g',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   runApp(ProviderScope(child: MyApp()));
